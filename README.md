@@ -7,8 +7,8 @@ motion commands and the Python ecosystem. This package is built as an abstration
 the user to dispatch arbitrary AeroBasic commands. The AeroBasic documentation can be found [**here**][here].
 
 This module is not extensively documented, nor is it built to reflect the complete functionality of the A3200. It is a private project that was designed by myself for myself.
-For example, clockwise and counterclockwise motion are not implemented as of yet. Since some people have expressed, I am sharing my code here, feel free to adapt it to suit your 
-purposes. I cannot give any guarantee for completeness, functionality or safety. 
+For example, clockwise and counterclockwise motion are not implemented as of yet. Since some people have expressed interest, I am sharing my code here, feel free to adapt it to suit your 
+purposes. I cannot give any guarantee for completeness, functionality or safety. The version on Pypi is (despite the version number) outdated and not maintained.
 
 
 [controller]: https://www.aerotech.com/product-catalog/motion-controller/a3200.aspx
@@ -115,7 +115,7 @@ Sending message: HOME X Y Z
 Information about the axes can also be retrieved from the controller:
 
 ```Python
-from AeroTechAPI import A3200Controller
+from aerotechapi import A3200Controller
 
 with A3200Controller() as controller:
     X, Y, Z = axes = controller.create_axes(('X', 'Y', 'Z'))
