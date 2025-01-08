@@ -52,8 +52,20 @@ class Axis:
     def freerun_stop(self):
         self._controller.freerun_stop(self)
 
-    def get_position(self):
-        return self._controller.get_positions(self)[self]
+    def get_feedback(self, parameter):
+        return self._controller.get_feedback(self, parameter)[self]
+
+    def get_drive_status(self):
+        return self._controller.get_drive_status(self)[self]
+
+    def get_axis_fault(self):
+        return self._controller.get_axis_fault(self)[self]
+
+    def get_axis_status(self):
+        return self._controller.get_axis_status(self)[self]
+
+    def get_position(self, program_position=True):
+        return self._controller.get_positions(self, program_position=program_position)[self]
 
     def is_homed(self):
         return self._controller.is_homed(self)[self]
@@ -63,6 +75,12 @@ class Axis:
 
     def is_jogging(self):
         return self._controller.is_jogging(self)[self]
+
+    def set_axis_dominant(self):
+        return self._controller.set_axis_dominant(self)
+
+    def set_axis_dependent(self):
+        return self._controller.set_axis_dependent(self)
 
 
 class MultiAxes:

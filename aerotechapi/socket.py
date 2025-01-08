@@ -1,5 +1,6 @@
 import socket
 from .reponse import Response
+from .constants import EOS_CHAR
 
 class _TcpIpSocketDummy:
     '''

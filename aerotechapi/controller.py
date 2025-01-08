@@ -31,6 +31,7 @@ class A3200Controller:
         self._command_buffer = ''
         self.redirect_path = 'program.pgm'
         self.redirect_exists = False
+        self._active_cam_tables = 0
         
         self.PSO = PSO(self)
             
@@ -319,33 +320,39 @@ class A3200Controller:
         response = AxesDict(zip(axes, data))
         return response
     
-    def get_positions(self, axes):
-        data = self.get_feedback(axes, 'PositionFeedback')
+    def get_positions(self, axes, program_position=True):
+        parameter = 'ProgramPosition' if program_position else 'PositionFeedback'
+        data = self.get_feedback(axes, parameter)
         return data
              
     def get_drive_status(self, axes):
         data = self.get_feedback(axes, 'DriveStatus')
-        data = {k: DriveStatus(v) for k, v in data.items()}
-        return DriveStatus(data)
+        status = AxesDict({k: DriveStatus(v) for k, v in data.items()})
+        return status
     
     def get_axis_status(self, axes):
         data = self.get_feedback(axes, 'AxisStatus')
-        data = {k: AxisStatus(v) for k, v in data.items()}
-        return AxisStatus(data)
+        status = AxesDict({k: AxisStatus(v) for k, v in data.items()})
+        return status
     
     def get_axis_fault(self, axes):
         data = self.get_feedback(axes, 'AxisFault')
-        data = {k: AxisFault(v) for k, v in data.items()}
-        return data
+        status = AxesDict({k: AxisFault(v) for k, v in data.items()})
+        return status
     
-    def get_task_state(self):
+    def get_task_state(self, task_id=1):
         template = '({}, {})'
         command = '~STATUS'
-        for i in range(5):
-            command += template.format(i, 'TaskState')
+        if task_id is not None:
+            command += template.format(task_id, 'TaskState')
+        else:
+            for i in range(5):
+                command += template.format(i, 'TaskState')
         ret = [str_to_num(val) for val in 
                self.send_command(command).data.split(' ')]
         status = [TaskStatus(val) for val in ret]
+        if task_id is not None:
+            status = status[0]
         return status
     
     def get_queue_state(self, task_id=1):
@@ -363,21 +370,29 @@ class A3200Controller:
         command += ' WRAP' if wrap else ' NOWRAP'
         self.send_command(command)
 
-    def start_camsync(self, slave_axis):
-        self.send_command(f'CAMSYNC {slave_axis}, 1, 1')
+    def start_camsync(self, slave_axis, table_num=0, sync_mode='relative'):
+        if sync_mode == 'relative':
+            sync_mode = 1
+        elif sync_mode == 'absolute':
+            sync_mode = 2
+        elif sync_mode == 'veloctiy':
+            sync_mode = 3
+        else:
+            raise ValueError('Sync mode muste be relative, absolute or velocity.')
+        self.send_command(f'CAMSYNC {slave_axis}, {table_num}, {sync_mode}')
 
-    def stop_camsync(self, slave_axis):
-        self.send_command(f'CAMSYNC {slave_axis}, 1, 0')
+    def stop_camsync(self, slave_axis, table_num=0):
+        self.send_command(f'CAMSYNC {slave_axis}, {table_num}, 0')
 
-    def free_camtable(self):
-        self.send_command('FREECAMTABLE 1')
+    def free_camtable(self, table_num=0):
+        self.send_command(f'FREECAMTABLE {table_num}')
         
     @staticmethod
     def write_cam_table(xs, ys, path=None, master_multiplier=None, 
-                        slave_multiplier=None):
+                        slave_multiplier=None, table_num=0):
         if not path:
             import tempfile
-            path = os.path.join(tempfile.gettempdir(), 'cam_table.cam')
+            path = os.path.join(tempfile.gettempdir(), f'cam_table_{table_num}.cam')
         with open(path, 'w') as file:
             if not len(xs) == len(ys):
                 raise ValueError('xs and ys must be the same size')
@@ -395,8 +410,8 @@ class A3200Controller:
                 file.write(f'{i:04d} {x:.4f} {y:.4f}\n')
                 
     @contextmanager
-    def camming(self, xs, ys, master_axis, slave_axis, table_num=1, wrap=False,
-                master_multiplier=None, slave_multiplier=None):
+    def camming(self, xs, ys, master_axis, slave_axis, table_num=None, wrap=False,
+                master_multiplier=None, slave_multiplier=None, sync_mode='relative'):
         '''
         Convenience context manager that enables camming motion for a block
         of motion commands. Internally calls write_cam_table and load_camsync
@@ -414,7 +429,7 @@ class A3200Controller:
         slave_axis : Axis, str
             slave axis for the camming motion.
         table_num: int
-            number of the cam table to occupy (1..99)
+            number of the cam table to occupy (0..99). Default 0.
         wrap : bool, optional
             Specify whether the camtable wraps around after exceeding its 
             maximum value. The default is False.
@@ -428,16 +443,19 @@ class A3200Controller:
         None.
 
         '''
-        
+        if table_num is None:
+            table_num = self._active_cam_tables
+            self._active_cam_tables += 1
         self.write_cam_table(xs, ys, master_multiplier=master_multiplier, 
-                              slave_multiplier=slave_multiplier)
+                              slave_multiplier=slave_multiplier, table_num=table_num)
         self.load_camtable(master_axis, slave_axis, table_num=table_num, wrap=wrap)
-        self.start_camsync(slave_axis)
+        self.start_camsync(slave_axis, table_num=table_num, sync_mode=sync_mode)
         try:
             yield
         finally:
-            self.stop_camsync(slave_axis)
-            self.free_camtable()
+            self.stop_camsync(slave_axis, table_num=table_num)
+            self.free_camtable(table_num=table_num)
+            self._active_cam_tables -= 1
 
     def set_axis_dominant(self, axis):
         self.send_command(f'SETPARM {axis} AxisType 0')
@@ -475,8 +493,8 @@ class A3200Controller:
                 response[axis] = False
         return response
     
-    def program_running(self):
-        if 'Program Running' in self.get_task_state():
+    def program_running(self, task_id=1):
+        if TaskStatus.ProgramRunning in self.get_task_state(task_id=task_id):
             return True
         return False
     
@@ -531,8 +549,8 @@ class PSO:
     def track_input(self, axis, input_):
         self.controller.send_command(f'PSOTRACK {axis} INPUT {input_}')
     
-    def window_input(self, axis, input_):
-        self.controller.send_command(f'PSOWINDOW {axis} 1 INPUT {input_}')
+    def window_input(self, axis, input_, window_counter=1):
+        self.controller.send_command(f'PSOWINDOW {axis} {window_counter} INPUT {input_}')
     
     def output_control(self, axis):
         self.controller.send_command(f'PSOOUTPUT {axis} CONTROL 0 1')
@@ -541,16 +559,14 @@ class PSO:
         self.controller.send_command(f'PSOPULSE {axis} TIME {time_on},'\
                                      f'{time_off} CYCLES {cycles}')
     
-    def window_load(self, axis, value):
-        self.controller.send_command(f'PSOWINDOW {axis} 1 LOAD {value}')
+    def window_load(self, axis, value, window_counter=1):
+        self.controller.send_command(f'PSOWINDOW {axis} {window_counter} LOAD {value}')
     
     def distance_fixed(self, axis, distance):
-        self.controller.send_command(f'PSODISTANCE {axis} FIXED'\
-                                     f'UNITSTOCOUNTS({axis}, {distance})')
+        self.controller.send_command(f'PSODISTANCE {axis} FIXED UNITSTOCOUNTS({axis}, {distance})')
     
-    def window_range(self, axis, lower, upper):
-        command = f'PSOWINDOW {axis} 1 RANGE UNITSTOCOUNTS({axis}, {lower}),'\
-            f'UNITSTOCOUNTS({axis}, {upper})'
+    def window_range(self, axis, lower, upper, window_counter=1):
+        command = f'PSOWINDOW {axis} {window_counter} RANGE UNITSTOCOUNTS({axis}, {lower}) UNITSTOCOUNTS({axis}, {upper})'
         self.controller.send_command(command)
 
     def output_pulse(self, axis):
