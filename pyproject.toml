@@ -1,0 +1,24 @@
+[project]
+name = "aerotechapi"
+version = "0.1.0"
+description = "API for the Aerotech A3200 controller"
+readme = "README.md"
+authors = [
+    {name = "Frederic Schell", email = "frederic.schell@iws.fraunhofer.de"},
+]
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "License :: OSI Approved :: MIT License",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_file = "surfalize/_version.py"

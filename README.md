@@ -1,21 +1,22 @@
 # aerotechapi
 
+<div align="center">
+  <img src="https://de.aerotech.com/wp-content/uploads/2020/08/new-logo_header.jpg"><br>
+</div>
+
 ## Overview
 This module provides a pure python interface to the [**Aerotech A3200 Stoftware-Based Machine Controller**][controller] based on a TCP/IP
 connection. It is aimed to facilitate CNC-control of the Aerotech axes system through Python and allow for combination of complex on-the-go generation of
 motion commands and the Python ecosystem. This package is built as an abstration on top of the AeroBasic language features, but also allows
 the user to dispatch arbitrary AeroBasic commands. The AeroBasic documentation can be found [**here**][here].
 
-This module is not extensively documented, nor is it built to reflect the complete functionality of the A3200. It is a private project that was designed by myself for myself.
-For example, clockwise and counterclockwise motion are not implemented as of yet. Since some people have expressed interest, I am sharing my code here, feel free to adapt it to suit your 
-purposes. I cannot give any guarantee for completeness, functionality or safety. The version on Pypi is (despite the version number) outdated and not maintained.
-
 
 [controller]: https://www.aerotech.com/product-catalog/motion-controller/a3200.aspx
 [here]: http://www.aerotechmotioncontrol.com/ftp/pwpsoftware/manuals_helpfiles/Controllers/Automation%203200/A3200SoftwareHelpFiles.zip
 
-## Installation
-Clone the git repository, navigate to the root directory and run:
+
+
+Install the package by cloning the git repository, navigating to the root directory and running:
 ```sh
 pip install setup.py
 ```
@@ -23,7 +24,7 @@ pip install setup.py
 ## Enabling TCP/IP-communication on the controller
 This package requires the controller to accept commands over TCP/IP. Therefore, the ASCII-Command-Interface must be enabled in the A3200 Configuration Manager.
 Navigate to your current confiuration file, then go to "System" -> "Communication" -> "ASCII". Ensure that the "CommandSetup" parameter is set to
-a value of 0x00010004, apply the changes and reset the controller. Standard port is set to 8000.
+a value of 0x00010004, apply the changes and reset the controller.
 
 ## Basic Example
 
@@ -78,7 +79,7 @@ by passing the string representation and a reference to the controller. The axes
 parameters for every function or object that accepts the corresponding string representation.
 
 ```Python
-from aerotechpi import Axis
+from aerotechapi import Axis
 X = Axis('X', controller)
 Y = Axis('Y', controller)
 Z = Axis('Y', controller)

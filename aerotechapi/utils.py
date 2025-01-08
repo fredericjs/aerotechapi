@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 
-
 def is_container(arg):
     '''Returns True if argument is an iterable but not a string, else False'''
     return isinstance(arg, Iterable) and not isinstance(arg, str)
