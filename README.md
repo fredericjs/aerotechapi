@@ -125,5 +125,28 @@ with A3200Controller() as controller:
             axis.enable()
         if not axis.is_homed():
             axis.home()
+```
 
+The status of the axes can be retrieved using `A3200Controller.get_feedback(axes, parameter)`, where arbitrary 
+parameters can be read for different axes. This method returns an `AxesDict` object, which acts like a regular dictionary,
+except that the values can be retrieved by specifying keys as either strings and `Axis` objects.
+Positions can be retrieved using `A3200Controller.get_positions`, which also returns an `AxesDict`. All functions that
+accept multiple axes and and a second argument, such as position or relative distance, can also be called buy only passing
+an `AxesDict` as ´the first argument.
+
+```Python
+from aerotechapi import A3200Controller
+controller = A3200Controller()
+controller.connect()
+X, Y, Z = controller.create_axes(('X', 'Y', 'Z'))
+
+inital_positions = controller.get_positions((X, Y, Z))
+inital_positions
+>>> {'X': 100, 'Y': 20, 'Z': -50}
+```
+
+To later move back to the recorded position, it is possible to simply pass the `AxesDict` to a method:
+
+```Python
+controller.moveabs(initial_positions)
 ```
